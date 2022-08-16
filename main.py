@@ -9,6 +9,8 @@ import pickle
 import pandas as pd
 import time, datetime
 from test_funcs.random_seed_config import *
+from copy import deepcopy
+
 
 # Set up the objective function
 parser = argparse.ArgumentParser('Run Experiments')
@@ -39,8 +41,8 @@ if args.debug:
 # Sanity checks
 assert args.acq in ['ucb', 'ei', 'thompson'], 'Unknown acquisition function choice ' + str(args.acq)
 
+Ys = []
 for t in range(args.n_trials):
-
     kwargs = {}
     if args.random_seed_objective is not None:
         assert 1 <= int(args.random_seed_objective) <= 25
@@ -67,6 +69,11 @@ for t in range(args.n_trials):
         f = MaxSAT60()
         kwargs = {
             'length_max_discrete': 60,
+        }
+    elif args.problem == 'labs':
+        f = LABS()
+        kwargs = {
+            'length_max_discrete': 50,
         }
     elif args.problem == 'xgboost-mnist':
         f = XGBoostOptTask(lamda=args.lamda, task='mnist', seed=args.seed)
@@ -122,6 +129,13 @@ for t in range(args.n_trials):
                      float(Y[-1]),
                      ''.join([str(int(i)) for i in optim.casmopolitan.X[:i * args.batch_size][argmin].flatten()]),
                      Y[:i*args.batch_size][argmin]))
+    Ys.append(deepcopy(Y))
 
     if args.seed is not None:
         args.seed += 1
+
+
+# Save results here
+Ys = np.array(Ys).squeeze(-1)
+fname = options["problem"] + "_n0=" + str(options["n_init"]) + "_n=" + str(options["max_iters"] )+ "_q=" + str(options["batch_size"]) + ".pkl"
+pickle.dump(Ys, open(fname, "wb"))
